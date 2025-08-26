@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>How It Works – NFT Kaspa Draw</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="k-favicon-glow.png" type="image/png">
+  <link rel="shortcut icon" href="k-favicon-glow.png" type="image/png">
+</head>
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><img src="logo.png" alt="NFT Kaspa Draw Logo" class="nav-logo"></li>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="how-it-works.html" class="active">How it works</a></li>
+      <li><a href="https://x.com/nftkaspadraw" target="_blank" class="x-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        @nftkaspadraw
+      </a></li>
+    </ul>
+  </nav>
+
+  <div class="title-with-icon">
+    <img src="k-icon-glow.png" alt="Kaspa Icon" class="title-icon">
+    <h1>How It Works ?</h1>
+  </div>
+
+  <div class="intro-text">
+    <p>NFT Kaspa Draw is a unique blockDAG lottery where every NFT you mint becomes your ticket to win.</p>
+    
+    <p><strong>Fair & Transparent</strong> – Winning numbers are determined by the Kaspa blockDAG hash, making the draw tamper-proof.</p>
+    
+    <p><strong>Real Rewards</strong> – 1 out of 5 chance to win : 100 runners, one grand prize of 8,400 KAS plus 19 double-win spots in each game.</p>
+    
+    <p><strong>Simple & Fun</strong> – Mint an NFT, hold your ticket, and see if luck is on your side! Winnings will be automatically distributed to the wallet you used for minting.</p>
+    
+    <p>Once the NFT collection is fully minted, the hash of the final NFT will determine the winners. Everything can be verified on chain. The <a href="results.html">results page</a> table contains the relevant links: mint transaction, last mint hash, and prize payment transaction.</p>
+
+    <p>More detailed information below</p>
+  </div>
+  
+  <div class="how-it-works-content">
+    <div class="section-container">
+      <h2>How to play ?</h2>
+      <p>
+        There is always a draw in progress. It is visible on the homepage. To participate, buy your NFT on Kaspa.com. The link is indicated in the table on the homepage.<br> When you have purchased your NFT, you will see your address displayed in the table on the homepage with the corresponding NFT number.<br> Once the 100 NFTs are minted, the winners are visible on the results page, as well as the transactions of the funds sent. Another draw is organized and visible on the homepage.
+      </p>
+    </div>
+
+  
+    <div class="section-container">
+      <h2>How Winners Are Chosen</h2>
+      <ol>
+        <li>Find the last minted NFT hash on the Kaspa Network (see link on results page).</li>
+        <li>Read the hash from left to right until you find the first two characters that are digits (ignore letters).</li>
+        <li>
+          These two digits form the winning number:
+          <ul>
+            <li>Example: If the digits are <strong>5 and 1</strong>, then <strong>#51</strong> is the winning number.</li>
+            <li>If the result is <strong>00</strong>, it is treated as <strong>#100</strong>.</li>
+          </ul>
+        </li>
+        <li>
+          NFT Kaspa Draw uses a <strong>5 × 20 segment system</strong> to determine winners:
+          <ul>
+            <li>Segment <strong>01–20</strong></li>
+            <li>Segment <strong>21–40</strong></li>
+            <li>Segment <strong>41–60</strong></li>
+            <li>Segment <strong>61–80</strong></li>
+            <li>Segment <strong>81–100</strong></li>
+          </ul>
+        </li>
+        <li>
+          The segment containing the winning number determines:
+          <ul>
+            <li><strong>Grand Prize Winner</strong>: Exact match with the winning number → <strong>8,400 KAS</strong></li>
+            <li><strong>19 Double Winners</strong>: All other NFTs in the same segment → <strong>400 KAS each</strong> (double the stake)</li>
+            <li>All NFTs outside the segment = <strong>no prize</strong></li>
+          </ul>
+        </li>
+      </ol>
+
+      <div class="prize-layout-container">
+        <img src="prizeruleslayout.png" alt="Prize Rules Layout – NFT Kaspa Draw">
+      </div>
+    </div>
+
+    <div class="section-container">
+      <h2>Examples</h2>
+
+      <div class="example-card">
+        <h3>If Winning number is <strong>17</strong> : Segment 1–20</h3>
+        <ul>
+          <li>Grand Prize Winner: NFT #17 → <strong>8,400 KAS</strong></li>
+          <li>Double Winners: NFTs 01–20 (except #17) → <strong>400 KAS each</strong></li>
+          <li>No Prize: NFTs 21–100</li>
+        </ul>
+      </div>
+
+      <div class="example-card">
+        <h3>If Winning number is <strong>25</strong> : Segment 21–40</h3>
+        <ul>
+          <li>Grand Prize Winner: NFT #25 → <strong>8,400 KAS</strong></li>
+          <li>Double Winners: NFTs 21–40 (except #25) → <strong>400 KAS each</strong></li>
+          <li>No Prize: NFTs 01–20 and 41–100</li>
+        </ul>
+      </div>
+      
+
+      <div class="example-card">
+        <h3>If Winning number is <strong>51</strong> : Segment 41–60</h3>
+        <ul>
+          <li>Grand Prize Winner: NFT #51 → <strong>8,400 KAS</strong></li>
+          <li>Double Winners: NFTs 41–60 (except #51) → <strong>400 KAS each</strong></li>
+          <li>No Prize: NFTs 01–40 and 61–100</li>
+        </ul>
+      </div>
+      
+
+      <div class="example-card">
+        <h3>If Winning number is <strong>77</strong> : Segment 61–80</h3>
+        <ul>
+          <li>Grand Prize Winner: NFT #77 → <strong>8,400 KAS</strong></li>
+          <li>Double Winners: NFTs 61–80 (except #77) → <strong>400 KAS each</strong></li>
+          <li>No Prize: NFTs 01–60 and 81–100</li>
+        </ul>
+      </div>
+      
+
+      <div class="example-card">
+        <h3>If Winning number <strong>91</strong> : Segment 81–100</h3>
+        <ul>
+          <li>Grand Prize Winner: NFT #91 → <strong>8,400 KAS</strong></li>
+          <li>Double Winners: NFTs 81–100 (except #91) → <strong>400 KAS each</strong></li>
+          <li>No Prize: NFTs 01–80</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="summary-section">
+      <h2>Summary</h2>
+      <ul>
+        <li>1 Grand Prize Winner wins <strong>8,400 KAS</strong></li>
+        <li>19 Double Winners each win <strong>400 KAS</strong> (double their stake)</li>
+        <li>80 NFTs lose (no prize)</li>
+        <li>Fully transparent and verifiable on the Kaspa Network</li>
+        <li>Each draw has its own dedicated wallet, called the Deploy Wallet Address, which is used to deploy the NFT collection and distribute winnings. The wallet link is available on the results page.</li>
+      </ul>
+      <p>If a player wins the Grand Prize Winner twice in a row, he wins the jackpot prize pool. The home page shows the current jackpot amount (Set up for the second draw).</p>
+    </div>
+    
+    <div class="winnings-table-container">
+      <h2>How the winnings are distributed</h2>
+      <p>There are 100 players with tickets of 200 Kas each, for a total of 20,000 Kas. Here is how the winnings are distributed:</p>
+      
+      <table>
+        <thead>
+            <tr>
+                <th>Winnings table</th>
+                <th>Runners</th>
+                <th>Kas</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Grand Prize Winner</td>
+                <td>1</td>
+                <td>8400</td>
+                <td>8400</td>
+            </tr>
+            <tr>
+                <td>Double Winners</td>
+                <td>19</td>
+                <td>400</td>
+                <td>7600</td>
+            </tr>
+            <tr>
+                <td>To Jackpot prize pool</td>
+                <td>1</td>
+                <td>2000</td>
+                <td>2000</td>
+            </tr>
+            <tr>
+                <td>NFT Deploy fees</td>
+                <td>1</td>
+                <td>1000</td>
+                <td>1000</td>
+            </tr>
+            <tr>
+                <td>Team</td>
+                <td>1</td>
+                <td>1000</td>
+                <td>1000</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Total</td>
+                <td></td>
+                <td>20000</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+  </div>
+
+  <footer class="main-nav footer-nav">
+    <div class="footer-content">
+      <a href="https://x.com/nftkaspadraw" target="_blank" class="x-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        @nftkaspadraw
+      </a>
+      <p class="copyright">© <span id="current-year"></span> Built on Kaspa</p>
+    </div>
+  </footer>
+
+  <script>
+    // Set current year for copyright
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

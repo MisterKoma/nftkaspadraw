@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome to NFT Kaspa Draw</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="k-favicon-glow.png" type="image/png">
+  <link rel="shortcut icon" href="k-favicon-glow.png" type="image/png">
+  <style>
+    .hide-prize-column,
+    #nft-details tbody tr td:nth-child(6),
+    #nft-details thead tr th:nth-child(6) {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><img src="logo.png" alt="NFT Kaspa Draw Logo" class="nav-logo"></li>
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="how-it-works.html">How it works</a></li>
+      <li><a href="https://x.com/nftkaspadraw" target="_blank" class="x-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        @nftkaspadraw
+      </a></li>
+    </ul>
+  </nav>
+
+  <div class="title-with-icon">
+    <img src="k-icon-glow.png" alt="Kaspa Icon" class="title-icon">
+    <h1>Welcome to NFT Kaspa Draw</h1>
+  </div>
+  
+  
+
+  <p class="draw-status">NFT Draw in progress for <span id="current-nft-collection-header">BLOCKY01</span></p>
+
+  <div class="magic-link-container" style="margin-top: 35px;">
+    <a href="https://kaspa.com/nft/collections/AURORA" target="_blank" class="magic-link" id="nft-ticket-link">
+      ★ Get your NFT ticket here and join the draw ! ★
+    </a>
+  </div>
+
+  <div class="search-form" style="display: none;">
+    <select id="nft-collection">
+      <option value="AURORA" selected>AURORA</option>
+    </select>
+    <button onclick="searchNFTCollection()">Show results</button>
+  </div>
+
+  <p>Minted NFTs for <span id="current-nft-collection"></span>: <span id="minted-value">-</span></p>
+  <p>Total NFTs for <span id="current-nft-collection2"></span>: <span id="max-value">-</span></p>
+  <p>Remaining NFTs to mint: <span id="remaining-value">-</span></p>
+  <p id="wallet-address-container">Deploy Wallet Address of this draw: <a id="wallet-address-link" href="#" target="_blank"></a></p>
+
+  <div id="last-mint-hash-container" style="display: none;">-</div>
+  <p id="last-mint-transaction-container" style="display: none;">Last Mint Transaction: <a id="last-mint-transaction-link" href="#" target="_blank">View on Kaspa Explorer</a></p>
+  <div id="mint-link-container" style="display: none;">
+    <p>Last Mint Transaction Hash for winner determination: <span id="formatted-hash">-</span></p>
+  </div>
+  <div id="hash-number-container">-</div>
+  <div id="winners-info-container" style="display: none;">-</div>
+
+  <table id="nft-details" border="1">
+    <thead>
+      <tr>
+        <th>Token ID</th>
+        <th>Mint Owner</th>
+        <th>Status</th>
+        <th>Mint Transaction</th>
+        <th class="sortable" onclick="sortTableByBlockTime()">Mint Date</th>
+        <th class="hide-prize-column">Prize Transaction</th>
+      </tr>
+    </thead>
+    <tbody id="nft-table-body">
+      <!-- Data will be populated by JavaScript -->
+    </tbody>
+  </table>
+
+  <footer class="main-nav footer-nav">
+    <div class="footer-content">
+      <a href="https://x.com/nftkaspadraw" target="_blank" class="x-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        @nftkaspadraw
+      </a>
+      <p class="copyright">© <span id="current-year"></span> Built on Kaspa</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    // Set current year for copyright
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
+
