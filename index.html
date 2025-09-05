@@ -60,10 +60,10 @@
   <div id="last-mint-hash-container" style="display: none;">-</div>
   <p id="last-mint-transaction-container" style="display: none;">Last Mint Transaction: <a id="last-mint-transaction-link" href="#" target="_blank">View on Kaspa Explorer</a></p>
   <div id="mint-link-container" style="display: none;">
-    <p>Last Mint Transaction Hash for winner determination: <span id="formatted-hash">-</span></p>
+    <p>Last Mint Transaction Hash for winner determination will be available when all NFTs are minted</p>
   </div>
-  <div id="hash-number-container">-</div>
-  <div id="winners-info-container" style="display: none;">-</div>
+  <div id="hash-number-container">The Winning number will be available when all NFTs are minted</div>
+  <div id="winners-info-container" style="display: none;">Winners information will be available when all NFTs are minted</div>
 
   <table id="nft-details" border="1">
     <thead>
@@ -97,6 +97,70 @@
   <script>
     // Set current year for copyright
     document.getElementById('current-year').textContent = new Date().getFullYear();
+
+    function updateWinnerDisplay() {
+      var mintedText = document.getElementById('minted-value').textContent;
+      var maxText = document.getElementById('max-value').textContent;
+      var hashContainer = document.getElementById('hash-number-container');
+      var winnersContainer = document.getElementById('winners-info-container');
+      var mintLinkContainer = document.getElementById('mint-link-container');
+      
+      if (mintedText === 'Loading...' || mintedText === '-' || mintedText === 'NA' ||
+          maxText === 'Loading...' || maxText === '-' || maxText === 'NA') {
+        hashContainer.textContent = 'The Winning number will be available when all NFTs are minted';
+        if (winnersContainer) winnersContainer.textContent = 'Winners information will be available when all NFTs are minted';
+        if (mintLinkContainer) mintLinkContainer.innerHTML = '<p>Last Mint Transaction Hash for winner determination will be available when all NFTs are minted</p>';
+        return;
+      }
+      
+      var minted = parseInt(mintedText, 10);
+      var max = parseInt(maxText, 10);
+      
+      if (isNaN(minted) || isNaN(max) || minted < max) {
+        hashContainer.textContent = 'The Winning number will be available when all NFTs are minted';
+        if (winnersContainer) winnersContainer.textContent = 'Winners information will be available when all NFTs are minted';
+        if (mintLinkContainer) mintLinkContainer.innerHTML = '<p>Last Mint Transaction Hash for winner determination will be available when all NFTs are minted</p>';
+      }
+      // Si tous les NFTs sont mintés, updateLastMintHash se chargera de mettre à jour le contenu
+    }
+
+    const mintedEl = document.getElementById('minted-value');
+    const maxEl = document.getElementById('max-value');
+    const hashContainer = document.getElementById('hash-number-container');
+    const winnersContainer = document.getElementById('winners-info-container');
+    const mintLinkContainer = document.getElementById('mint-link-container');
+    
+    const observer = new MutationObserver(function() {
+        updateWinnerDisplay();
+        setTimeout(updateWinnerDisplay, 500);
+    });
+    
+    observer.observe(mintedEl, { childList: true, characterData: true, subtree: true });
+    observer.observe(maxEl, { childList: true, characterData: true, subtree: true });
+    
+    const hashObserver = new MutationObserver(function() {
+        var mintedText = document.getElementById('minted-value').textContent;
+        var maxText = document.getElementById('max-value').textContent;
+        var minted = parseInt(mintedText, 10);
+        var max = parseInt(maxText, 10);
+        if (isNaN(minted) || isNaN(max) || minted < max) {
+            if (!hashContainer.textContent.includes('The Winning number will be available when all NFTs are minted')) {
+                hashContainer.textContent = 'The Winning number will be available when all NFTs are minted';
+            }
+            if (winnersContainer && !winnersContainer.textContent.includes('Winners information will be available when all NFTs are minted')) {
+                winnersContainer.textContent = 'Winners information will be available when all NFTs are minted';
+            }
+            if (mintLinkContainer && !mintLinkContainer.innerHTML.includes('Last Mint Transaction Hash for winner determination will be available when all NFTs are minted')) {
+                mintLinkContainer.innerHTML = '<p>Last Mint Transaction Hash for winner determination will be available when all NFTs are minted</p>';
+            }
+        }
+    });
+    
+    hashObserver.observe(hashContainer, { childList: true, characterData: true, subtree: true });
+    if (winnersContainer) hashObserver.observe(winnersContainer, { childList: true, characterData: true, subtree: true });
+    if (mintLinkContainer) hashObserver.observe(mintLinkContainer, { childList: true, characterData: true, subtree: true });
+
+    updateWinnerDisplay();
   </script>
 </body>
 </html>
