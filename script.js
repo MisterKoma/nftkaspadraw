@@ -133,14 +133,6 @@ async function fetchWithRetry(url, retries = 3) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url);
-            // 404 = token not found/not minted → return null immediately, no retry
-            if (response.status === 404) {
-                return null;
-            }
-            // Other non-OK responses → throw to trigger retry
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             return await response.json();
         } catch (error) {
             if (i === retries - 1) throw error;
@@ -179,9 +171,8 @@ async function fetchTokenData(collection, tokenId) {
             fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/history/${collection}/${tokenId}`)
         ]);
 
-        // Handle 404 / null responses (token not minted)
-        const isMinted = tokenData?.result?.owner ? true : false;
-        const txId = historyData?.result?.[0]?.txIdRev || null;
+        const isMinted = tokenData.result && tokenData.result.owner;
+        const txId = historyData?.result?.[0]?.txIdRev;
         const mintOwner = historyData?.result?.[0]?.owner || 'Not minted';
 
         let blockTime = 'Not minted';
@@ -190,12 +181,12 @@ async function fetchTokenData(collection, tokenId) {
 
         if (txId) {
             const txData = await fetchWithRetry(`https://api.kaspa.org/transactions/${txId}`);
-            if (txData && txData.block_time) {
+            if (txData.block_time) {
                 timestamp = txData.block_time;
                 const date = new Date(txData.block_time);
                 blockTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
             }
-            hash = txData?.hash || null;
+            hash = txData.hash || null;
         }
 
         return {
