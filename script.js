@@ -3,32 +3,32 @@ let nftDataCache = {};
 
 function searchNFTCollection() {
     const nftCollection = document.getElementById('nft-collection').value.trim();
-    
+
     // Clear cache when searching a new collection
     nftDataCache = {};
-    
+
     // Update elements only if they exist
     const currentNftCollection = document.getElementById('current-nft-collection');
     const currentNftCollection2 = document.getElementById('current-nft-collection2');
     const currentNftCollectionHeader = document.getElementById('current-nft-collection-header');
-    
+
     if (currentNftCollection) currentNftCollection.textContent = nftCollection;
     if (currentNftCollection2) currentNftCollection2.textContent = nftCollection;
     if (currentNftCollectionHeader) currentNftCollectionHeader.textContent = nftCollection;
-    
+
     document.getElementById('minted-value').textContent = 'Loading...';
     document.getElementById('max-value').textContent = 'Loading...';
-    
+
     // Update the magic link URL only if it exists (only on index page)
     const magicLink = document.getElementById('nft-ticket-link');
     if (magicLink) {
         magicLink.href = `https://kaspa.com/nft/collections/${nftCollection}`;
     }
-    
+
     // Set wallet address based on collection
     const walletAddressLink = document.getElementById('wallet-address-link');
     let walletAddress = '';
-    
+
     if (nftCollection === 'AURORA') {
         walletAddress = 'kaspa:qz9uvc0f6xk3wlg8mx99v3zygksg8pkw80jvgjlkxmzps44h2g4s5dyxdllq2';
     } else if (nftCollection === 'KASPER') {
@@ -38,7 +38,7 @@ function searchNFTCollection() {
     } else if (nftCollection === 'SKETCHES') {
         walletAddress = 'kaspa:qr8h4tq9t9q9q9q9q9q9q9q9q9q9q9q9q9q9q9q9q9q9q9';
     }
-    
+
     if (walletAddressLink) {
         // Display only the first 10 characters + "..."
         walletAddressLink.textContent = walletAddress.substring(0, 10) + '...';
@@ -56,7 +56,7 @@ function searchNFTCollection() {
             if (data.result) {
                 document.getElementById("minted-value").textContent = data.result.minted || "Not found";
                 document.getElementById("max-value").textContent = data.result.max || "Not found";
-                
+
                 // Calculate remaining NFTs
                 const remaining = data.result.max - data.result.minted;
                 document.getElementById("remaining-value").textContent = remaining >= 0 ? remaining : "NA";
@@ -73,7 +73,7 @@ function searchNFTCollection() {
                 document.getElementById("minted-value").textContent = "Not found";
                 document.getElementById("max-value").textContent = "Not found";
                 document.getElementById("remaining-value").textContent = "NA";
-                
+
                 const mintLinkContainer = document.getElementById('mint-link-container');
                 if (mintLinkContainer) {
                     mintLinkContainer.innerHTML = '';
@@ -86,7 +86,7 @@ function searchNFTCollection() {
             document.getElementById("minted-value").textContent = "NA";
             document.getElementById("max-value").textContent = "NA";
             document.getElementById("remaining-value").textContent = "NA";
-            
+
             const mintLinkContainer = document.getElementById('mint-link-container');
             if (mintLinkContainer) {
                 mintLinkContainer.innerHTML = '';
@@ -105,7 +105,7 @@ function updateMintLink(collection, remaining) {
 }
 
 // Add event listener for Enter key
-document.getElementById('nft-collection').addEventListener('keypress', function(event) {
+document.getElementById('nft-collection').addEventListener('keypress', function (event) {
     if (event.key === 'Enter') {
         event.preventDefault();
         searchNFTCollection();
@@ -113,12 +113,12 @@ document.getElementById('nft-collection').addEventListener('keypress', function(
 });
 
 // Add event listener for dropdown change
-document.getElementById('nft-collection').addEventListener('change', function(event) {
+document.getElementById('nft-collection').addEventListener('change', function (event) {
     searchNFTCollection();
 });
 
 // Load default collection on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     searchNFTCollection();
 });
 
@@ -133,6 +133,14 @@ async function fetchWithRetry(url, retries = 3) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url);
+            // 404 = token not found/not minted → return null immediately, no retry
+            if (response.status === 404) {
+                return null;
+            }
+            // Other non-OK responses → throw to trigger retry
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             return await response.json();
         } catch (error) {
             if (i === retries - 1) throw error;
@@ -171,8 +179,9 @@ async function fetchTokenData(collection, tokenId) {
             fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/history/${collection}/${tokenId}`)
         ]);
 
-        const isMinted = tokenData.result && tokenData.result.owner;
-        const txId = historyData?.result?.[0]?.txIdRev;
+        // Handle 404 / null responses (token not minted)
+        const isMinted = tokenData?.result?.owner ? true : false;
+        const txId = historyData?.result?.[0]?.txIdRev || null;
         const mintOwner = historyData?.result?.[0]?.owner || 'Not minted';
 
         let blockTime = 'Not minted';
@@ -181,12 +190,12 @@ async function fetchTokenData(collection, tokenId) {
 
         if (txId) {
             const txData = await fetchWithRetry(`https://api.kaspa.org/transactions/${txId}`);
-            if (txData.block_time) {
+            if (txData && txData.block_time) {
                 timestamp = txData.block_time;
                 const date = new Date(txData.block_time);
                 blockTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
             }
-            hash = txData.hash || null;
+            hash = txData?.hash || null;
         }
 
         return {
@@ -244,17 +253,17 @@ async function fetchAllTokensData(collection, maxTokens, onProgress) {
 
 async function populateNFTTable(collection, maxTokens, mintedCount) {
     const tableBody = document.getElementById('nft-table-body');
-    
+
     if (!tableBody) {
         return;
     }
-    
+
     // Show loading indicator
     showLoadingIndicator(tableBody, `Loading NFT data... 0/${maxTokens}`);
 
     // Fetch ALL token data in parallel batches
     const allTokensData = await fetchAllTokensData(collection, maxTokens, updateLoadingProgress);
-    
+
     // Store in cache for reuse by updateLastMintHash
     nftDataCache = {
         collection,
@@ -297,7 +306,7 @@ async function populateNFTTable(collection, maxTokens, mintedCount) {
 
     // Update last mint hash using cached data (no extra API calls!)
     updateLastMintHash(collection, maxTokens, mintedCount);
-    
+
     // After all NFTs are populated, update prize status
     updatePrizeStatus();
 }
@@ -306,22 +315,22 @@ async function populateNFTTable(collection, maxTokens, mintedCount) {
 function updatePrizeStatus() {
     const hashContainer = document.getElementById('hash-number-container');
     const winningNumberText = hashContainer.textContent;
-    
+
     // Check if we have a winning number
     if (winningNumberText.includes('Winning number is')) {
         // Extract winning number
         const winningNumber = parseInt(winningNumberText.match(/\d+/)[0]);
         const rows = document.querySelectorAll('#nft-table-body tr');
-        
+
         // Dynamic segment calculation
         const segment = getWinningSegment(winningNumber);
         if (!segment) return;
-        
+
         // Update each row
         rows.forEach(row => {
             const tokenId = parseInt(row.getAttribute('data-token-id'));
             const prizeCell = row.cells[5]; // 6th column is Prize Transaction
-            
+
             if (tokenId === winningNumber) {
                 prizeCell.textContent = 'Transaction Pending';
             } else if (tokenId >= segment.start && tokenId <= segment.end) {
@@ -349,7 +358,7 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
     const winnersContainer = document.getElementById('winners-info-container');
     const mintLinkContainer = document.getElementById('mint-link-container');
     const lastMintTxLink = document.getElementById('last-mint-transaction-link');
-    
+
     if (mintedCount < maxTokens) {
         hashContainer.textContent = 'Last mint hash will be available when all NFTs are minted';
         numberContainer.textContent = 'The Winning number will be available when all NFTs are minted';
@@ -364,7 +373,7 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
     try {
         // Use cached data from populateNFTTable instead of making new API calls!
         const cachedTokens = nftDataCache.tokens || [];
-        
+
         // Collect all minted transactions with their dates from cache
         const mintedNFTs = cachedTokens
             .filter(t => t && t.txId && t.timestamp && t.hash)
@@ -384,14 +393,14 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
         // Find the most recent transaction
         const lastMinted = mintedNFTs.sort((a, b) => b.timestamp - a.timestamp)[0];
         hashContainer.textContent = `Last mint hash: ${lastMinted.hash}`;
-        
+
         // Format the hash with the first two digits in bold
         const hash = lastMinted.hash;
         const hashNumbers = hash.match(/\d/g) || [];
         if (hashNumbers.length >= 2) {
             let formattedHash = hash;
             let numbersFound = 0;
-            
+
             formattedHash = hash.replace(/\d/g, (digit) => {
                 if (numbersFound < 2) {
                     numbersFound++;
@@ -399,13 +408,13 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
                 }
                 return digit;
             });
-            
+
             mintLinkContainer.innerHTML = `<p>Last Mint Transaction Hash for winner determination: ${formattedHash}</p>`;
-            
+
             const firstTwoNumbers = hashNumbers.slice(0, 2).join('');
             const winningNumber = parseInt(firstTwoNumbers);
             numberContainer.textContent = `The Winning number is ${firstTwoNumbers}`;
-            
+
             // Calculate winners information
             const winnersInfo = calculateWinners(winningNumber, maxTokens, collection);
             winnersContainer.innerHTML = winnersInfo;
@@ -414,12 +423,12 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
             numberContainer.textContent = 'Not enough numbers in hash';
             winnersContainer.textContent = 'Cannot determine winners';
         }
-        
+
         // Update link to the transaction where this hash was found
         if (lastMintTxLink && lastMinted.txId) {
             lastMintTxLink.href = `https://explorer.kaspa.org/txs/${lastMinted.txId}`;
         }
-        
+
     } catch (error) {
         console.error('Error getting last mint hash:', error);
         hashContainer.textContent = 'Error loading hash';
@@ -435,14 +444,14 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
 function calculateWinners(winningNumber, maxTokens, collectionName) {
     // Dynamic segment calculation
     const segment = getWinningSegment(winningNumber);
-    
+
     if (!segment) {
         return '<p>Winning number out of range</p>';
     }
-    
+
     const segmentStart = segment.start;
     const segmentEnd = Math.min(segment.end, maxTokens);
-    
+
     // Generate the list of NFTs in the segment (excluding the main winner)
     const doubleWinners = [];
     for (let i = segmentStart; i <= segmentEnd; i++) {
@@ -450,7 +459,7 @@ function calculateWinners(winningNumber, maxTokens, collectionName) {
             doubleWinners.push(i);
         }
     }
-    
+
     let html = `
         <div style="margin: 20px 0; padding: 15px; border: 2px solid #01E4BA; background-color: #f9f9f9;">
             <h3 style="color: #000000; margin-top: 0;">Winner Announcement</h3>
@@ -458,11 +467,11 @@ function calculateWinners(winningNumber, maxTokens, collectionName) {
             <p style="color: #000000;"><strong>Winning Segment:</strong> ${segmentStart}–${segmentEnd}</p>
             <p style="color: #000000;"><strong>🥇 Grand Prize Winner:</strong> NFT #${winningNumber} → 8,400 KAS</p>
     `;
-    
+
     if (doubleWinners.length > 0) {
         html += `<p style="color: #000000;"><strong>🥈 Double Winners:</strong> NFTs ${doubleWinners.join(', ')} → 400 KAS each</p>`;
     }
-    
+
     // Calculate NFTs with no prize
     const noPrizeRanges = [];
     if (segmentStart > 1) {
@@ -471,13 +480,13 @@ function calculateWinners(winningNumber, maxTokens, collectionName) {
     if (segmentEnd < maxTokens) {
         noPrizeRanges.push(`${segmentEnd + 1}–${maxTokens}`);
     }
-    
+
     if (noPrizeRanges.length > 0) {
         html += `<p style="color: #000000;"><strong>❌ No Prize:</strong> NFTs ${noPrizeRanges.join(' and ')}</p>`;
     }
-    
+
     html += '</div>';
-    
+
     return html;
 }
 
@@ -491,7 +500,7 @@ function sortTableByBlockTime() {
 
     // Remove previous sort classes
     header.classList.remove('asc', 'desc');
-    
+
     // Toggle sort direction
     sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     header.classList.add(sortDirection);
@@ -500,7 +509,7 @@ function sortTableByBlockTime() {
     rows.sort((a, b) => {
         const aValue = a.cells[4].textContent;
         const bValue = b.cells[4].textContent;
-        
+
         // Handle special cases
         if (aValue === 'Not minted') return sortDirection === 'asc' ? 1 : -1;
         if (bValue === 'Not minted') return sortDirection === 'asc' ? -1 : 1;
@@ -510,7 +519,7 @@ function sortTableByBlockTime() {
         // Convert dates to timestamps for comparison
         const dateA = new Date(aValue).getTime();
         const dateB = new Date(bValue).getTime();
-        
+
         return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     });
 
@@ -521,18 +530,18 @@ function sortTableByBlockTime() {
 
 // Modify the function that updates the NFT count
 function updateNFTCount(minted, max) {
-  // Show elements only when all NFTs are minted - check if elements exist first
-  const lastMintTransactionContainer = document.getElementById('last-mint-transaction-container');
-  const winnersInfoContainer = document.getElementById('winners-info-container');
-  const mintLinkContainer = document.getElementById('mint-link-container');
-  
-  if (minted >= max) {
-    if (lastMintTransactionContainer) lastMintTransactionContainer.style.display = 'block';
-    if (winnersInfoContainer) winnersInfoContainer.style.display = 'block';
-    if (mintLinkContainer) mintLinkContainer.style.display = 'block';
-  } else {
-    if (lastMintTransactionContainer) lastMintTransactionContainer.style.display = 'none';
-    if (winnersInfoContainer) winnersInfoContainer.style.display = 'none';
-    if (mintLinkContainer) mintLinkContainer.style.display = 'none';
-  }
+    // Show elements only when all NFTs are minted - check if elements exist first
+    const lastMintTransactionContainer = document.getElementById('last-mint-transaction-container');
+    const winnersInfoContainer = document.getElementById('winners-info-container');
+    const mintLinkContainer = document.getElementById('mint-link-container');
+
+    if (minted >= max) {
+        if (lastMintTransactionContainer) lastMintTransactionContainer.style.display = 'block';
+        if (winnersInfoContainer) winnersInfoContainer.style.display = 'block';
+        if (mintLinkContainer) mintLinkContainer.style.display = 'block';
+    } else {
+        if (lastMintTransactionContainer) lastMintTransactionContainer.style.display = 'none';
+        if (winnersInfoContainer) winnersInfoContainer.style.display = 'none';
+        if (mintLinkContainer) mintLinkContainer.style.display = 'none';
+    }
 }
