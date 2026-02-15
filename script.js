@@ -141,15 +141,7 @@ async function fetchWithRetry(url, retries = 3) {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            // Read as text first, then safely parse JSON
-            // (API sometimes returns plain text like "not found" even with 200 status)
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch (parseError) {
-                // Non-JSON response (e.g. "not found") → treat as not found
-                return null;
-            }
+            return await response.json();
         } catch (error) {
             if (i === retries - 1) throw error;
             await new Promise(resolve => setTimeout(resolve, 100));
