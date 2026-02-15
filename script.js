@@ -1,5 +1,11 @@
+// Shared cache for NFT data to avoid duplicate API calls
+let nftDataCache = {};
+
 function searchNFTCollection() {
     const nftCollection = document.getElementById('nft-collection').value.trim();
+    
+    // Clear cache when searching a new collection
+    nftDataCache = {};
     
     // Update elements only if they exist
     const currentNftCollection = document.getElementById('current-nft-collection');
@@ -61,9 +67,8 @@ function searchNFTCollection() {
                     updateMintLink(nftCollection, remaining);
                 }
 
-                // After updating the general information, populate the table
-                populateNFTTable(nftCollection, data.result.max);
-                updateLastMintHash(nftCollection, data.result.max, data.result.minted);
+                // Populate the table AND update last mint hash using shared data
+                populateNFTTable(nftCollection, data.result.max, data.result.minted);
             } else {
                 document.getElementById("minted-value").textContent = "Not found";
                 document.getElementById("max-value").textContent = "Not found";
@@ -114,25 +119,14 @@ document.getElementById('nft-collection').addEventListener('change', function(ev
 
 // Load default collection on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, starting search...');
-    const table = document.getElementById('nft-details');
-    console.log('Table element:', table);
-    const tbody = document.getElementById('nft-table-body');
-    console.log('Table body element:', tbody);
-    
     searchNFTCollection();
 });
 
 function clearNFTTable() {
     const tbody = document.getElementById('nft-table-body');
-    console.log('Clearing table, tbody:', tbody);
     if (tbody) {
         tbody.innerHTML = '';
     }
-}
-
-async function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function fetchWithRetry(url, retries = 3) {
@@ -142,90 +136,167 @@ async function fetchWithRetry(url, retries = 3) {
             return await response.json();
         } catch (error) {
             if (i === retries - 1) throw error;
-            await sleep(100); // Wait 0.1 second before retrying
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
 }
 
-async function populateNFTTable(collection, maxTokens) {
-    console.log('Populating table for collection:', collection, 'maxTokens:', maxTokens);
+// Show a loading indicator in the table
+function showLoadingIndicator(tableBody, message) {
+    tableBody.innerHTML = `
+        <tr id="loading-row">
+            <td colspan="6" style="text-align: center; padding: 40px; font-size: 1.2rem;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                    <div class="loading-spinner"></div>
+                    <span id="loading-message">${message}</span>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Update loading progress message
+function updateLoadingProgress(loaded, total) {
+    const msg = document.getElementById('loading-message');
+    if (msg) {
+        msg.textContent = `Loading NFT data... ${loaded}/${total}`;
+    }
+}
+
+// Fetch a single token's data (token info + history + block time)
+async function fetchTokenData(collection, tokenId) {
+    try {
+        const [tokenData, historyData] = await Promise.all([
+            fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/nfts/${collection}/${tokenId}`),
+            fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/history/${collection}/${tokenId}`)
+        ]);
+
+        const isMinted = tokenData.result && tokenData.result.owner;
+        const txId = historyData?.result?.[0]?.txIdRev;
+        const mintOwner = historyData?.result?.[0]?.owner || 'Not minted';
+
+        let blockTime = 'Not minted';
+        let timestamp = null;
+        let hash = null;
+
+        if (txId) {
+            const txData = await fetchWithRetry(`https://api.kaspa.org/transactions/${txId}`);
+            if (txData.block_time) {
+                timestamp = txData.block_time;
+                const date = new Date(txData.block_time);
+                blockTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+            }
+            hash = txData.hash || null;
+        }
+
+        return {
+            tokenId,
+            isMinted,
+            mintOwner,
+            txId,
+            blockTime,
+            timestamp,
+            hash,
+            error: false
+        };
+    } catch (error) {
+        console.error(`Error processing token ${tokenId}:`, error);
+        return {
+            tokenId,
+            isMinted: false,
+            mintOwner: null,
+            txId: null,
+            blockTime: 'Not minted',
+            timestamp: null,
+            hash: null,
+            error: true
+        };
+    }
+}
+
+// Process tokens in controlled parallel batches to avoid overwhelming the API
+async function fetchAllTokensData(collection, maxTokens, onProgress) {
+    const concurrency = 10; // Process 10 tokens in parallel at a time
+    const results = new Array(maxTokens);
+    let loaded = 0;
+
+    for (let i = 0; i < maxTokens; i += concurrency) {
+        const batchEnd = Math.min(i + concurrency, maxTokens);
+        const batchPromises = [];
+
+        for (let tokenId = i + 1; tokenId <= batchEnd; tokenId++) {
+            batchPromises.push(fetchTokenData(collection, tokenId));
+        }
+
+        const batchResults = await Promise.all(batchPromises);
+        for (const result of batchResults) {
+            results[result.tokenId - 1] = result;
+            loaded++;
+        }
+
+        if (onProgress) {
+            onProgress(loaded, maxTokens);
+        }
+    }
+
+    return results;
+}
+
+async function populateNFTTable(collection, maxTokens, mintedCount) {
     const tableBody = document.getElementById('nft-table-body');
-    console.log('Table body for population:', tableBody);
     
     if (!tableBody) {
-        console.error('Table body not found!');
         return;
     }
     
-    tableBody.innerHTML = '';
-    const batchSize = 20; // Increased from 5 to 20
+    // Show loading indicator
+    showLoadingIndicator(tableBody, `Loading NFT data... 0/${maxTokens}`);
+
+    // Fetch ALL token data in parallel batches
+    const allTokensData = await fetchAllTokensData(collection, maxTokens, updateLoadingProgress);
     
-    for (let startId = 1; startId <= maxTokens; startId += batchSize) {
-        const endId = Math.min(startId + batchSize - 1, maxTokens);
-        const rows = [];
-        
-        // Create all rows first
-        for (let tokenId = startId; tokenId <= endId; tokenId++) {
-            const row = document.createElement('tr');
-            row.setAttribute('data-token-id', tokenId);
+    // Store in cache for reuse by updateLastMintHash
+    nftDataCache = {
+        collection,
+        tokens: allTokensData
+    };
+
+    // Build ALL rows at once using DocumentFragment for performance
+    const fragment = document.createDocumentFragment();
+
+    for (const data of allTokensData) {
+        const row = document.createElement('tr');
+        row.setAttribute('data-token-id', data.tokenId);
+
+        if (data.error) {
             row.innerHTML = `
-                <td>${tokenId}</td>
-                <td>Loading...</td>
-                <td>Loading...</td>
-                <td>Loading...</td>
-                <td>Loading...</td>
-                <td>Loading...</td>
+                <td>${data.tokenId}</td>
+                <td><a href="https://kaspa.com/nft/collections/${collection}" target="_blank">Get your NFT ticket here and join the draw!</a></td>
+                <td>Not minted</td>
+                <td>Not minted</td>
+                <td>Not minted</td>
+                <td>No Prize</td>
             `;
-            tableBody.appendChild(row);
-            rows.push({ tokenId, row });
+        } else {
+            row.innerHTML = `
+                <td>${data.tokenId}</td>
+                <td>${data.mintOwner}</td>
+                <td>${data.isMinted ? 'Minted' : 'Not minted'}</td>
+                <td>${data.txId ? `<a href="https://explorer.kaspa.org/txs/${data.txId}" target="_blank">${data.txId.substring(0, 8)}...</a>` : 'Not minted'}</td>
+                <td>${data.blockTime}</td>
+                <td>No Prize</td>
+            `;
         }
 
-        // Process each token in the batch
-        for (const { tokenId, row } of rows) {
-            try {
-                const [tokenData, historyData] = await Promise.all([
-                    fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/nfts/${collection}/${tokenId}`),
-                    fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/history/${collection}/${tokenId}`)
-                ]);
-
-                const isMinted = tokenData.result && tokenData.result.owner;
-                const txId = historyData?.result?.[0]?.txIdRev;
-                const mintOwner = historyData?.result?.[0]?.owner || 'Not minted';
-
-                let blockTime = 'Not minted';
-                if (txId) {
-                    const txData = await fetchWithRetry(`https://api.kaspa.org/transactions/${txId}`);
-                    if (txData.block_time) {
-                        const date = new Date(txData.block_time);
-                        blockTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
-                    }
-                }
-
-                row.innerHTML = `
-                    <td>${tokenId}</td>
-                    <td>${mintOwner}</td>
-                    <td>${isMinted ? 'Minted' : 'Not minted'}</td>
-                    <td>${txId ? `<a href="https://explorer.kaspa.org/txs/${txId}" target="_blank">${txId.substring(0, 8)}...</a>` : 'Not minted'}</td>
-                    <td>${blockTime}</td>
-                    <td>No Prize</td>
-                `;
-            } catch (error) {
-                console.error(`Error processing token ${tokenId}:`, error);
-                row.innerHTML = `
-                    <td>${tokenId}</td>
-                    <td><a href="https://kaspa.com/nft/collections/${collection}" target="_blank">Get your NFT ticket here and join the draw!</a></td>
-                    <td>Not minted</td>
-                    <td>Not minted</td>
-                    <td>Not minted</td>
-                    <td>No Prize</td>
-                `;
-            }
-            
-            await sleep(100); // Small delay between individual tokens
-        }
-        
-        await sleep(200); // Small delay between batches (reduced from 300ms)
+        fragment.appendChild(row);
     }
+
+    // Clear loading and inject all rows at once
+    tableBody.innerHTML = '';
+    tableBody.appendChild(fragment);
+
+    // Update last mint hash using cached data (no extra API calls!)
+    updateLastMintHash(collection, maxTokens, mintedCount);
     
     // After all NFTs are populated, update prize status
     updatePrizeStatus();
@@ -242,24 +313,9 @@ function updatePrizeStatus() {
         const winningNumber = parseInt(winningNumberText.match(/\d+/)[0]);
         const rows = document.querySelectorAll('#nft-table-body tr');
         
-        // Determine segment
-        let segmentStart, segmentEnd;
-        if (winningNumber >= 1 && winningNumber <= 20) {
-            segmentStart = 1;
-            segmentEnd = 20;
-        } else if (winningNumber >= 21 && winningNumber <= 40) {
-            segmentStart = 21;
-            segmentEnd = 40;
-        } else if (winningNumber >= 41 && winningNumber <= 60) {
-            segmentStart = 41;
-            segmentEnd = 60;
-        } else if (winningNumber >= 61 && winningNumber <= 80) {
-            segmentStart = 61;
-            segmentEnd = 80;
-        } else if (winningNumber >= 81 && winningNumber <= 100) {
-            segmentStart = 81;
-            segmentEnd = 100;
-        }
+        // Dynamic segment calculation
+        const segment = getWinningSegment(winningNumber);
+        if (!segment) return;
         
         // Update each row
         rows.forEach(row => {
@@ -267,17 +323,24 @@ function updatePrizeStatus() {
             const prizeCell = row.cells[5]; // 6th column is Prize Transaction
             
             if (tokenId === winningNumber) {
-                // Grand prize winner
                 prizeCell.textContent = 'Transaction Pending';
-            } else if (tokenId >= segmentStart && tokenId <= segmentEnd) {
-                // Double winners
+            } else if (tokenId >= segment.start && tokenId <= segment.end) {
                 prizeCell.textContent = 'Transaction Pending';
             } else {
-                // No prize
                 prizeCell.textContent = 'No Prize';
             }
         });
     }
+}
+
+// Dynamic segment calculation instead of hardcoded if/else chains
+function getWinningSegment(winningNumber, segmentSize = 20) {
+    if (winningNumber < 1) return null;
+    const segmentIndex = Math.ceil(winningNumber / segmentSize);
+    return {
+        start: (segmentIndex - 1) * segmentSize + 1,
+        end: segmentIndex * segmentSize
+    };
 }
 
 async function updateLastMintHash(collection, maxTokens, mintedCount) {
@@ -299,18 +362,23 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
     }
 
     try {
-        // Collect all minted transactions with their dates
-        const mintedNFTs = [];
-        for (let tokenId = 1; tokenId <= maxTokens; tokenId++) {
-            const historyData = await fetchWithRetry(`https://mainnet.krc721.stream/api/v1/krc721/mainnet/history/${collection}/${tokenId}`);
-            if (historyData?.result?.[0]?.txIdRev) {
-                const txData = await fetchWithRetry(`https://api.kaspa.org/transactions/${historyData.result[0].txIdRev}`);
-                mintedNFTs.push({
-                    txId: historyData.result[0].txIdRev,
-                    timestamp: txData.block_time,
-                    hash: txData.hash
-                });
-            }
+        // Use cached data from populateNFTTable instead of making new API calls!
+        const cachedTokens = nftDataCache.tokens || [];
+        
+        // Collect all minted transactions with their dates from cache
+        const mintedNFTs = cachedTokens
+            .filter(t => t && t.txId && t.timestamp && t.hash)
+            .map(t => ({
+                txId: t.txId,
+                timestamp: t.timestamp,
+                hash: t.hash
+            }));
+
+        if (mintedNFTs.length === 0) {
+            hashContainer.textContent = 'No mint data available';
+            numberContainer.textContent = 'Cannot determine winning number';
+            winnersContainer.textContent = 'Cannot determine winners';
+            return;
         }
 
         // Find the most recent transaction
@@ -324,7 +392,6 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
             let formattedHash = hash;
             let numbersFound = 0;
             
-            // Replace the first two digits with their bold version
             formattedHash = hash.replace(/\d/g, (digit) => {
                 if (numbersFound < 2) {
                     numbersFound++;
@@ -366,27 +433,15 @@ async function updateLastMintHash(collection, maxTokens, mintedCount) {
 }
 
 function calculateWinners(winningNumber, maxTokens, collectionName) {
-    // Determine the winning segment (segments of 20)
-    let segmentStart, segmentEnd;
+    // Dynamic segment calculation
+    const segment = getWinningSegment(winningNumber);
     
-    if (winningNumber >= 1 && winningNumber <= 20) {
-        segmentStart = 1;
-        segmentEnd = 20;
-    } else if (winningNumber >= 21 && winningNumber <= 40) {
-        segmentStart = 21;
-        segmentEnd = 40;
-    } else if (winningNumber >= 41 && winningNumber <= 60) {
-        segmentStart = 41;
-        segmentEnd = 60;
-    } else if (winningNumber >= 61 && winningNumber <= 80) {
-        segmentStart = 61;
-        segmentEnd = 80;
-    } else if (winningNumber >= 81 && winningNumber <= 100) {
-        segmentStart = 81;
-        segmentEnd = Math.min(100, maxTokens);
-    } else {
+    if (!segment) {
         return '<p>Winning number out of range</p>';
     }
+    
+    const segmentStart = segment.start;
+    const segmentEnd = Math.min(segment.end, maxTokens);
     
     // Generate the list of NFTs in the segment (excluding the main winner)
     const doubleWinners = [];
